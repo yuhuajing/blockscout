@@ -4,8 +4,10 @@ DOCKER_REPO := blockscout
 APP_NAME := blockscout
 BS_CONTAINER_IMAGE := $(DOCKER_REPO)/$(APP_NAME)
 BS_CONTAINER_NAME := blockscout
-PG_CONTAINER_IMAGE := postgres:14
-PG_CONTAINER_NAME := db
+PG_CONTAINER_IMAGE := postgres:latest
+PG_CONTAINER_NAME := postgres
+SC_VERIFIER_CONTAINER_IMAGE :=ghcr.io/blockscout/smart-contract-verifier
+SC_VERIFIER_CONTAINER_NAME :=smart-contract-verifier
 THIS_FILE = $(lastword $(MAKEFILE_LIST))
 RELEASE_VERSION ?= '5.2.2'
 PORT ?= '4000'
@@ -19,9 +21,16 @@ endif
 ifdef DATABASE_URL
 	DB_URL = $(DATABASE_URL)
 else
-	DB_URL = postgresql://postgres:@$(HOST):5432/blockscout?ssl=false
+	DB_URL = postgresql://postgres:polaris@$(HOST):5432/blockscout?ssl=false
 	ECTO_USE_SSL = 'false'
 endif
+
+ifdef MICROSERVICE_SC_VERIFIER_URL
+	SC_VERIFIER_URL = $(MICROSERVICE_SC_VERIFIER_URL)
+else
+	SC_VERIFIER_URL = http://@$(HOST):8050
+endif
+
 BLOCKSCOUT_CONTAINER_PARAMS = -e 'MIX_ENV=prod' \
 															 -e 'DATABASE_URL=$(DB_URL)'
 ifeq ($(SYSTEM), Linux)
@@ -746,6 +755,7 @@ ifdef INDEXER_TOKEN_INSTANCE_SANITIZE_BATCH_SIZE
 endif
 
 HAS_BLOCKSCOUT_IMAGE := $(shell docker images | grep -sw "${BS_CONTAINER_IMAGE} ")
+
 build:
 	@echo "==> Checking for blockscout image $(BS_CONTAINER_IMAGE)"
 ifdef HAS_BLOCKSCOUT_IMAGE
